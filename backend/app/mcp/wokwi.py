@@ -32,6 +32,7 @@ WOKWI_TO_VELXIO_BOARD: dict[str, str] = {
     "raspberry-pi-pico": "rp2040:rp2040:rpipico",
     "wokwi-esp32-devkit-v1": "esp32:esp32:esp32",
 }
+DEFAULT_BOARD_FQBN = "arduino:avr:uno"
 
 VELXIO_TO_WOKWI_BOARD: dict[str, str] = {v: k for k, v in WOKWI_TO_VELXIO_BOARD.items()}
 # ``raspberry-pi-pico`` is accepted as a legacy import alias, but exports use
@@ -94,10 +95,9 @@ def _detect_board_fqbn(parts: list[dict[str, Any]]) -> str:
         part_type = part.get("type", "")
         if part_type in WOKWI_TO_VELXIO_BOARD:
             return WOKWI_TO_VELXIO_BOARD[part_type]
-    raise ValueError(
-        "Wokwi diagram does not contain a supported board; "
-        f"supported types: {', '.join(sorted(BOARD_PART_TYPES))}"
-    )
+    # Wokwi diagrams may omit the board while being assembled interactively,
+    # and older imports used Uno as the safe default for unknown board types.
+    return DEFAULT_BOARD_FQBN
 
 
 def parse_wokwi_diagram(diagram: dict[str, Any]) -> dict[str, Any]:

@@ -38,6 +38,15 @@ logger = logging.getLogger(__name__)
 QEMU_XTENSA   = os.environ.get('QEMU_ESP32_BINARY',  'qemu-system-xtensa')
 QEMU_RISCV32  = os.environ.get('QEMU_RISCV32_BINARY', 'qemu-system-riscv32')
 
+# Backwards-compatible view of the QEMU board mapping.  Runtime selection now
+# comes from board_runtime_profiles, but integrations and older tests import
+# this constant directly.
+_MACHINE: dict[str, tuple[str, str]] = {
+    'esp32':    (QEMU_XTENSA,  'esp32'),
+    'esp32-s3': (QEMU_XTENSA,  'esp32s3'),
+    'esp32-c3': (QEMU_RISCV32, 'esp32c3'),
+}
+
 EventCallback = Callable[[str, dict], Awaitable[None]]
 
 
