@@ -1,238 +1,77 @@
-# Custom Chips — Velxio Developer Guide
+# 自定义芯片与 WASM
 
-Velxio supports **user-defined chips** written in C and compiled to WebAssembly.
-Drop a chip on the canvas, wire its pins like any other component, and your chip
-runs alongside the simulated Arduino sketch.
+自定义芯片用 C 描述器件逻辑，由后端编译为 WebAssembly，再作为画布元件加载。它适合补充 MCU 仿真中没有的传感器、协议从设备、存储器和简单协处理器。
 
-This is Velxio's equivalent of Wokwi's Custom Chips API — but with a clean-room
-header (`velxio-chip.h`), our own runtime, and zero code from third-party
-simulators. The toolchain (clang + WASI-SDK) is 100 % open source.
+## 文件和运行模型
 
----
+一个芯片通常包含：
 
-## Table of contents
+```text
+my-chip.c          C 源码
+my-chip.chip.json  引脚、属性和显示元数据
+```
 
-- [What you get](#what-you-get)
-- [The 30-second example: an inverter](#the-30-second-example-an-inverter)
-- [Anatomy of a chip](#anatomy-of-a-chip)
-- [The 11 example chips](#the-11-example-chips)
-- [Where to read next](#where-to-read-next)
+C 源码使用当前 SDK 头文件 `backend/sdk/velxio-chip.h`，导出 `void chip_setup(void)`。运行时调用该入口后，芯片通过回调响应引脚边沿、GPIO、I²C、SPI、UART 或定时器事件；不要在芯片中创建阻塞式永久循环。
 
----
+每个画布实例拥有独立的 WASM 实例和线性内存。引脚、属性和协议在 `chip_setup()` 中注册，画布连接通过统一 PinManager 接入。
 
-## What you get
-
-A custom chip can:
-
-| Feature | Use it for |
-|---|---|
-| **Digital GPIO** (`vx_pin_*`) | Logic gates, level translators, level-triggered effects |
-| **Pin watch with edge detection** (`vx_pin_watch`) | Reactive chips: counters, debouncers, edge-triggered FSMs |
-| **Initialized output state** (`VX_OUTPUT_LOW`/`HIGH`) | Pin defaults to a known value at chip boot — no glitch |
-| **Analog out (DAC)** (`vx_pin_dac_write`) | Programmable voltage references, function generators |
-| **I2C slave** (`vx_i2c_attach`) | EEPROMs, RTCs, IO expanders, sensors |
-| **SPI slave** (`vx_spi_attach`/`start`/`stop`) | Shift registers, ADCs, displays, flash chips |
-| **UART** (`vx_uart_attach`/`vx_uart_write`) | GPS modules, BT/WiFi modems, anything that talks Serial |
-| **User-editable attributes** (`vx_attr_*`) | Knobs the user tweaks: gain, threshold, baud, etc. |
-| **Timers** (`vx_timer_*`) | Periodic events, oscillators, watchdogs |
-| **Framebuffer / display** (`vx_framebuffer_init`/`vx_buffer_write`) | Custom LCDs, OLEDs, dot-matrix displays |
-| **Logging** (`vx_log` and `printf`) | Debug output to the chip console |
-
-Every API call is documented in
-[`wiki/custom-chips-api-reference.md`](./wiki/custom-chips-api-reference.md).
-
----
-
-## The 30-second example: an inverter
-
-A chip with one input and one output. `OUT` is always the inverse of `IN`.
-
-### `inverter.c`
+## 最小示例
 
 ```c
 #include "velxio-chip.h"
-#include <stdlib.h>
 
-typedef struct {
-  vx_pin in;
-  vx_pin out;
-} chip_state_t;
+static vx_pin out;
 
-static void on_in_change(void *ud, vx_pin pin, int value) {
-  chip_state_t *s = (chip_state_t*)ud;
-  vx_pin_write(s->out, value ? VX_LOW : VX_HIGH);
+static void on_input_change(void *user_data, vx_pin pin, int value) {
+  (void)user_data;
+  (void)pin;
+  vx_pin_write(out, value ? VX_LOW : VX_HIGH);
 }
 
 void chip_setup(void) {
-  chip_state_t *s = (chip_state_t*)malloc(sizeof(chip_state_t));
-  s->in  = vx_pin_register("IN",  VX_INPUT);
-  s->out = vx_pin_register("OUT", VX_OUTPUT);
-
-  vx_pin_write(s->out, vx_pin_read(s->in) ? VX_LOW : VX_HIGH);
-  vx_pin_watch(s->in, VX_EDGE_BOTH, on_in_change, s);
-
-  vx_log("inverter ready");
+  vx_pin input = vx_pin_register("IN", VX_INPUT);
+  out = vx_pin_register("OUT", VX_OUTPUT_LOW);
+  vx_pin_watch(input, VX_EDGE_BOTH, on_input_change, 0);
 }
 ```
 
-### `inverter.chip.json`
+回调 `on_input_change` 应只做小范围状态更新并尽快返回。实际可用的 GPIO、总线和属性 API 以 SDK 头文件为准。
+
+## 元数据
+
+`chip.json` 至少应声明名称和引脚；`attributes` 可暴露可编辑参数，`display` 可声明帧缓冲尺寸：
 
 ```json
 {
   "schema": "velxio-chip/v1",
   "name": "Inverter",
-  "author": "you",
-  "license": "MIT",
-  "description": "OUT = !IN.",
-  "pins": ["IN", "OUT", "GND", "VCC"],
-  "attributes": []
-}
-```
-
-### Try it in the editor
-
-1. Open Velxio. Click **Add Component** → search "Custom Chip" → select.
-2. The Custom Chip Designer opens. Switch to the **Examples** tab.
-3. Click **Inverter** — code loads in the editor.
-4. Click **Compile** → "✓ Compiled — 61.8 KB".
-5. Click **Save & Place** — the chip appears on the canvas.
-6. Wire `IN` to your Arduino's pin 13 and `OUT` to a LED.
-7. Run the blink sketch → the LED toggles inverse to the built-in LED.
-
----
-
-## Anatomy of a chip
-
-A chip is **two files**:
-
-```
-mychip.c           // C source — the logic of the chip
-mychip.chip.json   // Metadata — pin layout, attributes, optional display
-```
-
-### Lifecycle
-
-The chip exports exactly **one** function:
-
-```c
-void chip_setup(void);
-```
-
-Velxio calls `chip_setup()` once per chip instance after the simulation starts.
-Inside it the chip:
-
-1. **Allocates state** — typically one `malloc(sizeof(chip_state_t))` per instance.
-2. **Registers pins** with `vx_pin_register(name, mode)`.
-3. **Attaches peripherals** if needed: `vx_i2c_attach`, `vx_uart_attach`, `vx_spi_attach`.
-4. **Subscribes to events** with `vx_pin_watch` and/or `vx_timer_create` + `vx_timer_start`.
-5. Returns. **No event loop.** The chip is purely reactive.
-
-After setup, the chip runs **only** inside callbacks the host invokes:
-
-- A pin watch fires → your callback runs → maybe writes other pins.
-- The I2C bus addresses your slave → your `on_connect`/`read`/`write`/`stop` runs.
-- A timer expires → your callback runs.
-- A UART byte arrives → your `on_rx_byte` runs.
-
-This means your chip never blocks, never loops forever, and uses zero CPU
-between events.
-
-### State per instance
-
-If the user drops two of your chips on the canvas, they each get their own
-`WebAssembly.Instance` with **separate memory**. Inside `chip_setup()` you
-`malloc` a new state struct — there's no shared global state to worry about.
-
-### `chip.json` schema
-
-```json
-{
-  "schema":      "velxio-chip/v1",
-  "name":        "Display name",
-  "author":      "Your name",
-  "license":     "MIT",
-  "description": "Short text shown in the picker tooltip",
-
-  "pins": [
-    "IN",                         // string  — auto-laid out left/right
-    "OUT",
-    { "name": "SCL", "x": 0, "y": 24 },   // object — explicit position
-    { "name": "SDA", "x": 0, "y": 36 }
-  ],
-
+  "pins": ["IN", "OUT", "VCC", "GND"],
   "attributes": [
-    { "name": "threshold", "type": "int",   "default": 4, "min": 1, "max": 1024 },
-    { "name": "gain",      "type": "float", "default": 1.0, "min": 0, "max": 10, "step": 0.1 }
-  ],
-
-  "display": { "width": 128, "height": 64 }   // optional — for chips with a screen
+    { "name": "threshold", "type": "int", "default": 1, "min": 0, "max": 10 }
+  ]
 }
 ```
 
-Empty strings in `pins` skip a slot (so your DIP layout matches a real chip).
-`attributes` show up as sliders/inputs in the chip's properties dialog.
-`display` enables the framebuffer API.
+该 schema 和头文件名称是当前运行时的兼容接口；新增代码应把它们视为稳定 ABI，不要自行改变结构布局或导出函数名称。
 
----
+## 编译和加载流程
 
-## The 11 example chips
+1. 在自定义芯片编辑器中填写 `sourceC` 和 `chipJson`。
+2. 前端调用 `POST /api/compile-chip/`，请求体为 `{ "source": "...", "chip_json": "..." }`。
+3. 后端使用 clang/WASI SDK 和 SDK 头文件编译 C 源码，返回 `wasm_base64`、日志、错误和 `byte_size`。
+4. 编译成功后将结果写入元件属性 `wasmBase64`，`ChipRuntime` 在仿真启动时实例化它。
+5. 运行时验证 `chip_setup`、引脚和协议注册；失败时应显示编译或运行时错误，而不是静默放置一个无效芯片。
 
-The Custom Chip designer ships a gallery with 11 ready-to-go examples,
-covering every protocol the runtime supports:
+前端入口：`frontend/src/simulation/customChips/`；后端编译服务：`backend/app/services/chip_compile.py`；接口实现：`backend/app/api/routes/compile_chip.py`。
 
-| Chip | Protocol | What it shows |
-|---|---|---|
-| **Inverter** | GPIO + watch | Simplest possible chip — start here |
-| **XOR Gate** | GPIO + 2 inputs | Multiple watches, recompute output on any edge |
-| **CD4094** | GPIO state machine | Edge detection (RISING vs BOTH), multi-pin shift register |
-| **Pulse Counter** | GPIO + attributes | User-configurable threshold via slider |
-| **74HC595** | SPI slave | SPI transfer with re-arm pattern |
-| **MCP3008** | SPI + analog | SPI ADC: read voltage, return 10-bit result |
-| **24C01 EEPROM** | I2C slave | Tiny memory device with pointer auto-increment |
-| **24LC256 EEPROM** | I2C slave | 16-bit addressing + page writes |
-| **PCF8574** | I2C IO expander | Reading/writing 8 pins atomically |
-| **DS3231 RTC** | I2C state | 19 registers, BCD encoding, register pointer |
-| **ROT13 UART** | UART | Receive a byte, transmit transformed byte |
+## 环境与验证
 
-Each is fully explained in
-[`wiki/custom-chips-examples.md`](./wiki/custom-chips-examples.md).
+自定义芯片编译需要后端可找到 WASI SDK 和 `backend/sdk/velxio-chip.h`。先访问 `/api/compile-chip/status`，再检查编译日志。修改 SDK、ABI 或运行时后，应同时验证：
 
----
+- C 源码能否编译并导出 `chip_setup`；
+- 单实例引脚读写和回调行为；
+- 两个实例之间没有共享状态；
+- I²C/SPI/UART 等总线能与对应组件或板卡连通；
+- 无效 JSON、缺失引脚和 WASM 加载失败会被明确报告。
 
-## Where to read next
-
-| If you want to … | Read |
-|---|---|
-| Understand every host function in detail | [API reference](./wiki/custom-chips-api-reference.md) |
-| See the 11 chip examples worked through | [Examples walkthrough](./wiki/custom-chips-examples.md) |
-| Set up the toolchain or write tests | [Build & test guide](./wiki/custom-chips-build-and-test.md) |
-| Run custom chips on ESP32 (backend runtime architecture) | [ESP32 backend runtime](./wiki/custom-chips-esp32-backend-runtime.md) |
-| Know which boards support which protocols | [Board support matrix](../test/autosearch/07_multi_board_support.md) |
-
-### Quick links to source
-
-- C SDK header — [`backend/sdk/velxio-chip.h`](../backend/sdk/velxio-chip.h)
-- Frontend runtime — [`frontend/src/simulation/customChips/`](../frontend/src/simulation/customChips/)
-- Example chips — [`test/test_custom_chips/sdk/examples/`](../test/test_custom_chips/sdk/examples/)
-- Backend compile service — [`backend/app/services/chip_compile.py`](../backend/app/services/chip_compile.py)
-- Sandbox test suite — [`test/test_custom_chips/`](../test/test_custom_chips/)
-
----
-
-## Design philosophy
-
-A few decisions worth knowing:
-
-- **Reactive, not procedural.** Your chip never has a `loop()`. The host calls
-  your callbacks; you do small bits of work and return. This guarantees the
-  chip can't hang the simulator.
-- **Shared-nothing memory.** Each chip instance gets its own WASM linear memory.
-  Two instances of the same chip can't accidentally share state — no globals
-  to worry about.
-- **The C type system is your friend.** `velxio-chip.h` declares concrete
-  types (`vx_pin`, `vx_attr`, `vx_i2c_config`) and uses `_Static_assert` to
-  guarantee the struct layouts match between your chip and the host. If you
-  add a field, the assertion fires and you fix the runtime accordingly.
-- **No dependency on Wokwi.** This is a clean-room implementation. The
-  toolchain is `clang` + `wasi-sdk`, both Apache-2.0. Our header and runtime
-  are Velxio-original.
+板卡级运行时的扩展见 [板卡扩展与 C++ 编译](BOARD_EXTENSIONS.md)。
