@@ -16,7 +16,12 @@ import { AppHeader } from '../components/layout/AppHeader';
 import { ExampleThumbnail } from '../components/examples/ExampleThumbnail';
 import { useSEO } from '../utils/useSEO';
 
-const DOMAIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+// Vite's SSR runner may expose a partial window object without a location.
+// Read the origin defensively so prerendering also works in Node.
+const DOMAIN =
+  typeof window !== 'undefined' && window.location?.origin
+    ? window.location.origin
+    : 'http://localhost';
 
 const BOARD_LABELS: Record<string, string> = {
   'arduino-uno': 'Arduino Uno',
