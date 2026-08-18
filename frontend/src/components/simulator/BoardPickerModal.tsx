@@ -1,0 +1,146 @@
+import React, { useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { BOARD_KIND_LABELS, type BoardKind } from '../../types/board';
+import { listBoardProfiles } from '../../boards';
+import { getProBoardsVersion, subscribeProBoards } from '../../lib/proBoardRegistry';
+
+/** Neutral chip glyph for overlay-registered boards without a bespoke icon. */
+const PRO_FALLBACK_ICON = (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <rect x="3" y="3" width="10" height="10" rx="2" fill="#8b5cf6" />
+    <rect x="5.5" y="5.5" width="5" height="5" rx="1" fill="#1e1b2e" />
+  </svg>
+);
+
+
+const BOARD_ICON: Record<string, string> = {
+  'arduino-uno': '⬤',
+  'arduino-nano': '▪',
+  'arduino-mega': '▬',
+  'raspberry-pi-pico': '◆',
+  'raspberry-pi-3': '⬛',
+  'raspberry-pi-4': '⬛',
+  'raspberry-pi-5': '⬛',
+  esp32: '⬡',
+  'esp32-s3': '⬡',
+  'esp32-c3': '⬡',
+  'stm32-bluepill': '◈',
+  'stm32-blackpill': '◈',
+};
+
+interface BoardPickerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectBoard: (kind: BoardKind) => void;
+}
+
+export const BoardPickerModal = ({ isOpen, onClose, onSelectBoard }: BoardPickerModalProps) => {
+  const { t } = useTranslation();
+  useSyncExternalStore(subscribeProBoards, getProBoardsVersion);
+  const boards = listBoardProfiles();
+  if (!isOpen) return null;
+
+  // Portal to <body>: escape the canvas subtree so no ancestor stacking
+  // context can pin the dialog below floating panels (e.g. the AI chat).
+  return createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        // Above every floating panel, including the pro AI chat (8000/8001).
+        zIndex: 9000,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#1e1e1e',
+          border: '1px solid #444',
+          borderRadius: 8,
+          padding: 24,
+          minWidth: 380,
+          maxWidth: 480,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 style={{ color: '#ccc', margin: '0 0 16px 0', fontSize: 16 }}>{t('editor.boardPicker.title')}</h3>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {boards.map((profile) => {
+            const kind = profile.id as BoardKind;
+            const capabilityText = profile.capabilities.languages.join(' / ');
+            const description = `${profile.runtime.family ?? profile.runtime.backend} · ${capabilityText}`;
+            return (
+              <button
+                key={kind}
+                onClick={() => {
+                  onSelectBoard(kind);
+                  onClose();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  background: '#2d2d2d',
+                  border: '1px solid #555',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  color: '#ddd',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#3a3a3a')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#2d2d2d')}
+              >
+                <span
+                  style={{
+                    fontSize: 20,
+                    width: 28,
+                    textAlign: 'center',
+                    color: kind.startsWith('raspberry')
+                      ? '#c22'
+                      : kind.startsWith('esp')
+                        ? '#e8a020'
+                        : '#4af',
+                  }}
+                >
+                  {BOARD_ICON[kind] ?? PRO_FALLBACK_ICON}
+                </span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>
+                    {profile.displayName || BOARD_KIND_LABELS[kind]}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                    {description}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={onClose}
+          style={{
+            marginTop: 16,
+            padding: '6px 14px',
+            background: 'transparent',
+            border: '1px solid #555',
+            borderRadius: 4,
+            color: '#888',
+            cursor: 'pointer',
+            fontSize: 12,
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+};
