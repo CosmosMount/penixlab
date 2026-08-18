@@ -11394,7 +11394,7 @@ export function registerProExamples(examples: ExampleProject[]): void {
   }
   // Overlay registration can land AFTER a direct-URL page render resolved the
   // array (the @pro import is dynamic) — notify subscribers so example pages
-  // re-render instead of sticking on a 404 (same contract as proRoutes).
+  // re-render instead of sticking on a 404 when the catalogue changes.
   proExamplesVersion++;
   for (const l of proExamplesListeners) l();
 }

@@ -10,11 +10,7 @@
  * Two backends:
  *   - Desktop (Tauri): enumerates ports via the sidecar and streams
  *     arduino-cli output over SSE.
- *   - Web: if the pro overlay installed a Web Serial flasher for this
- *     board kind (see `lib/proWebFlash.ts`), the browser's own port
- *     picker replaces the dropdown — the modal opens on a single
- *     "Connect & Flash" button. Without an overlay (pure OSS web
- *     build), it shows the "requires Velxio Desktop" fallback.
+ *   - Web: uses Web Serial when a board-specific flasher is available.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -68,8 +64,8 @@ export const FlashModal = ({ board, fqbn, onClose }: Props) => {
               kind: 'error',
               port: null,
               message:
-                'Hardware flashing requires Velxio Desktop. The web app cannot ' +
-                'access local USB serial ports.',
+                'Hardware flashing requires a supported Web Serial connection ' +
+                'or the local desktop bridge.',
               log: [],
             },
       );

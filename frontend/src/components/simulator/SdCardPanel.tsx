@@ -2,11 +2,8 @@
  * SdCardPanel — the "SD Card" file panel shown in the component property dialog
  * for the microsd-card component.
  *
- * Free: the project's text files are auto-copied onto the card (handled
- * elsewhere, at simulation start). This panel is the PAID path: uploading your
- * own files — binaries included (images, audio, data) — which the editor cannot
- * accept any other way. Gated via `proSdCardGate`: a non-paid user clicking
- * "Add files" gets the upgrade prompt instead of the file picker.
+ * The project's text files are auto-copied onto the card at simulation start;
+ * this panel also lets users add binary assets such as images, audio and data.
  *
  * Files are persisted on the component as `properties.sdFiles`
  * (`{ name, contentB64 }[]`), so they travel with the project (.vlx) and feed
@@ -19,7 +16,6 @@ import {
   type UploadedSdFile,
 } from '../../utils/sdCardFiles';
 import { readFat16Image, type FatDirFile } from '../../utils/fatImage';
-import { sdCardUploadAllowed, triggerSdCardUpgradePrompt } from '../../lib/proSdCardGate';
 import { getEsp32Bridge, useSimulatorStore } from '../../store/useSimulatorStore';
 
 interface SdCardPanelProps {
@@ -83,11 +79,6 @@ export const SdCardPanel: React.FC<SdCardPanelProps> = ({ files, onChange, board
   };
 
   const openPicker = (): void => {
-    // Gate the PAID action: a non-paid user gets the upgrade prompt instead.
-    if (!sdCardUploadAllowed()) {
-      triggerSdCardUpgradePrompt();
-      return;
-    }
     inputRef.current?.click();
   };
 
@@ -114,7 +105,7 @@ export const SdCardPanel: React.FC<SdCardPanelProps> = ({ files, onChange, board
   return (
     <div className="sd-card-section">
       <div className="sd-card-label">
-        SD Card files <span className="sd-card-paid">Paid</span>
+          SD Card files
       </div>
       {files.length === 0 && (
         <div className="sd-card-hint">

@@ -17,7 +17,7 @@ import { registerEditorCommand } from '../../lib/editorCommands';
 import './FileExplorer.css';
 
 /** Neutral chip glyph for overlay-registered boards without a bespoke icon. */
-const PRO_FALLBACK_ICON = (
+const DEFAULT_BOARD_ICON = (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
     <rect x="3" y="3" width="10" height="10" rx="2" fill="#8b5cf6" />
     <rect x="5.5" y="5.5" width="5" height="5" rx="1" fill="#1e1b2e" />
@@ -351,7 +351,7 @@ interface FileExplorerProps {
 export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewClick }) => {
   const { t } = useTranslation();
   // Hidden <input type="file"> we trigger via ref when the user clicks
-  // the Open project button.  Accepts both .vlx (Velxio native) and .zip
+  // the Open project button.  Accepts both .vlx (PenixLab native) and .zip
   // (Wokwi bundle); the dispatcher in utils/importProject.ts decides which
   // loader to run based on the file extension.  Kept outside React state so
   // the change event still fires when the user picks the same file twice.
@@ -750,7 +750,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
           </button>
           <button
             className="file-explorer-save-btn"
-            title="Open project (.vlx Velxio or .zip Wokwi)"
+          title="Open project (.vlx PenixLab or .zip Wokwi)"
             onClick={handleOpenProjectClick}
           >
             <IcoOpen />
@@ -810,7 +810,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
                 </button>
 
                 <span className="fe-board-icon" style={{ color }}>
-                  {BOARD_ICON[board.boardKind] ?? PRO_FALLBACK_ICON}
+                  {BOARD_ICON[board.boardKind] ?? DEFAULT_BOARD_ICON}
                 </span>
 
                 {renamingSection?.id === board.id && renamingSection.kind === 'board' ? (

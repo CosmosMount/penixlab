@@ -1,12 +1,11 @@
-import React, { useSyncExternalStore } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { BOARD_KIND_LABELS, type BoardKind } from '../../types/board';
 import { listBoardProfiles } from '../../boards';
-import { getProBoardsVersion, subscribeProBoards } from '../../lib/proBoardRegistry';
 
-/** Neutral chip glyph for overlay-registered boards without a bespoke icon. */
-const PRO_FALLBACK_ICON = (
+/** Neutral glyph for a board without a bespoke icon. */
+const DEFAULT_BOARD_ICON = (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
     <rect x="3" y="3" width="10" height="10" rx="2" fill="#8b5cf6" />
     <rect x="5.5" y="5.5" width="5" height="5" rx="1" fill="#1e1b2e" />
@@ -37,7 +36,6 @@ interface BoardPickerModalProps {
 
 export const BoardPickerModal = ({ isOpen, onClose, onSelectBoard }: BoardPickerModalProps) => {
   const { t } = useTranslation();
-  useSyncExternalStore(subscribeProBoards, getProBoardsVersion);
   const boards = listBoardProfiles();
   if (!isOpen) return null;
 
@@ -52,7 +50,6 @@ export const BoardPickerModal = ({ isOpen, onClose, onSelectBoard }: BoardPicker
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        // Above every floating panel, including the pro AI chat (8000/8001).
         zIndex: 9000,
       }}
       onClick={onClose}
@@ -109,7 +106,7 @@ export const BoardPickerModal = ({ isOpen, onClose, onSelectBoard }: BoardPicker
                         : '#4af',
                   }}
                 >
-                  {BOARD_ICON[kind] ?? PRO_FALLBACK_ICON}
+                  {BOARD_ICON[kind] ?? DEFAULT_BOARD_ICON}
                 </span>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>

@@ -10,26 +10,13 @@
  *
  * Selecting a board loads its gallery Blink example when one exists (full
  * wiring: 220Ω resistor + LED); boards without one get a fresh board whose
- * default sketch blinks the on-board LED. Pro-gated boards (STM32 + QEMU
- * Raspberry Pi) carry the same PRO pill as the component picker and go
- * through the same `boardGateDecision` seam before anything is created.
+ * default sketch blinks the on-board LED.
  */
-import React, { useEffect, useMemo, useSyncExternalStore } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_LABELS } from '../../types/board';
-import {
-  boardGateDecision,
-  isProBoardKind,
-  proBoardFeatureName,
-  triggerProUpgradePrompt,
-} from '../../lib/proBoardGate';
-import {
-  listProBoards,
-  subscribeProBoards,
-  getProBoardsVersion,
-} from '../../lib/proBoardRegistry';
 import { useSimulatorStore, DEFAULT_BOARD_POSITION } from '../../store/useSimulatorStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useEditorStore } from '../../store/useEditorStore';
@@ -207,32 +194,11 @@ async function applyStarter(kind: string | 'blank'): Promise<void> {
   }
 }
 
-const ProPill: React.FC = () => (
-  <span className="new-project-pro" title="Pro feature — paid plan or Velxio Desktop">
-    PRO
-  </span>
-);
-
 export const NewProjectDialog: React.FC<NewProjectDialogProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
 
-  // Late-overlay registrations (the @pro import is dynamic) must re-render an
-  // already-mounted dialog — same contract as the component picker.
-  const proBoardsVersion = useSyncExternalStore(
-    subscribeProBoards,
-    getProBoardsVersion,
-    getProBoardsVersion,
-  );
-
   const sections = useMemo(() => {
-    const defs = listProBoards();
     const oss = (k: BoardKind) => ({ kind: k as string, blurb: BOARD_BLURBS[k] ?? '' });
-    // Overlay-registered kinds only exist when the private overlay mounted —
-    // an OSS build simply doesn't show those cards.
-    const pro = (k: string) => {
-      const d = defs.find((x) => x.kind === k);
-      return d ? [{ kind: d.kind, blurb: d.description }] : [];
-    };
     return [
       {
         title: 'Arduino',
@@ -252,7 +218,6 @@ export const NewProjectDialog: React.FC<NewProjectDialogProps> = ({ isOpen, onCl
           oss('esp32-cam'),
           oss('xiao-esp32-s3'),
           oss('xiao-esp32-c3'),
-          ...pro('xiao-esp32c6'),
         ],
       },
       { title: 'STM32', entries: STM32_BOARDS.map(oss) },
@@ -260,15 +225,13 @@ export const NewProjectDialog: React.FC<NewProjectDialogProps> = ({ isOpen, onCl
         title: 'Raspberry Pi',
         entries: [
           oss('raspberry-pi-pico'),
-          ...pro('xiao-rp2040'),
           oss('raspberry-pi-3'),
           oss('raspberry-pi-4'),
           oss('raspberry-pi-5'),
         ],
       },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proBoardsVersion]);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -282,13 +245,6 @@ export const NewProjectDialog: React.FC<NewProjectDialogProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   const handleSelect = (kind: string | 'blank') => {
-    if (kind !== 'blank' && boardGateDecision(kind as BoardKind) === 'block') {
-      // Same gate as adding the board from the picker: close, prompt, create
-      // nothing. The overlay's upgrade modal takes over from here.
-      onClose();
-      triggerProUpgradePrompt(proBoardFeatureName(kind));
-      return;
-    }
     if (kind !== 'blank') trackSelectBoard(kind);
     onClose();
     applyStarter(kind).catch((err) => {
@@ -350,7 +306,6 @@ export const NewProjectDialog: React.FC<NewProjectDialogProps> = ({ isOpen, onCl
                             height={180}
                           />
                         </span>
-                        {isProBoardKind(kind) && <ProPill />}
                         <span className="new-project-card-info">
                           <span className="new-project-card-name">{label}</span>
                           <span className="new-project-card-desc">{blurb}</span>

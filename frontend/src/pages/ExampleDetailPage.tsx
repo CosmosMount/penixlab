@@ -10,14 +10,13 @@
  */
 
 import React from 'react';
-import { useSyncExternalStore } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { exampleProjects, subscribeProExamples, getProExamplesVersion } from '../data/examples';
+import { exampleProjects } from '../data/examples';
 import { AppHeader } from '../components/layout/AppHeader';
 import { ExampleThumbnail } from '../components/examples/ExampleThumbnail';
 import { useSEO } from '../utils/useSEO';
 
-const DOMAIN = 'https://velxio.dev';
+const DOMAIN = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
 
 const BOARD_LABELS: Record<string, string> = {
   'arduino-uno': 'Arduino Uno',
@@ -45,9 +44,6 @@ const DIFFICULTY_COLOR: Record<string, string> = {
 };
 
 export const ExampleDetailPage: React.FC = () => {
-  // Re-render when the pro overlay registers late examples (dynamic import).
-  useSyncExternalStore(subscribeProExamples, getProExamplesVersion, getProExamplesVersion);
-
   const { exampleId } = useParams<{ exampleId: string }>();
   const navigate = useNavigate();
 
@@ -55,8 +51,8 @@ export const ExampleDetailPage: React.FC = () => {
 
   // SEO — called unconditionally (hooks must not be inside conditionals).
   const seoTitle = example
-    ? `${example.title} — Free Arduino Simulator Example | Velxio`
-    : 'Example Not Found | Velxio';
+    ? `${example.title} — PenixLab Example`
+    : 'Example Not Found | PenixLab';
 
   const boardLabel = example
     ? (BOARD_LABELS[example.boardType ?? 'arduino-uno'] ?? example.boardType ?? 'Arduino Uno')
@@ -150,7 +146,7 @@ export const ExampleDetailPage: React.FC = () => {
           style={{ width: '100%', maxWidth: 760, marginBottom: 32, fontSize: 13, color: '#666' }}
         >
           <Link to="/" style={{ color: '#666', textDecoration: 'none' }}>
-            Velxio
+            PenixLab
           </Link>
           {' / '}
           <Link to="/examples" style={{ color: '#666', textDecoration: 'none' }}>
@@ -369,7 +365,7 @@ export const ExampleDetailPage: React.FC = () => {
               url: `${DOMAIN}/examples/${example.id}`,
               educationalLevel: example.difficulty,
               learningResourceType: 'Simulation',
-              provider: { '@type': 'Organization', name: 'Velxio', url: DOMAIN },
+              provider: { '@type': 'Organization', name: 'PenixLab', url: DOMAIN },
               about: { '@type': 'Thing', name: boardLabel },
             }),
           }}

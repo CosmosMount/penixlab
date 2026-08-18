@@ -4,15 +4,12 @@
  * Displays a gallery of example Arduino projects that users can load and run
  */
 
-import React, { useState, useCallback, useSyncExternalStore } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   exampleProjects,
-  subscribeProExamples,
-  getProExamplesVersion,
   type ExampleProject,
 } from '../../data/examples';
-import { subscribeProBoards, getProBoardsVersion } from '../../lib/proBoardRegistry';
 import { BOARD_KIND_LABELS } from '../../types/board';
 import { ExampleThumbnail } from './ExampleThumbnail';
 import './ExamplesGallery.css';
@@ -79,14 +76,8 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [search, setSearch] = useState<string>('');
 
-  // Overlay boards and their examples register asynchronously — re-derive the
-  // filter options when either lands, so a pro board's tab appears without a
-  // reload.
-  useSyncExternalStore(subscribeProExamples, getProExamplesVersion);
-  useSyncExternalStore(subscribeProBoards, getProBoardsVersion);
-
-  // The static tabs cover the OSS boards; every other board kind that appears
-  // in the (possibly overlay-extended) gallery gets a tab of its own, labelled
+  // The static tabs cover the bundled boards; every other board kind that
+  // appears in the gallery gets a tab of its own, labelled
   // from the board registry. Without this, examples for runtime-registered
   // boards (XIAO, M5Stack, Raspberry Pi, ...) were reachable only via "All".
   const boardTabs: BoardTab[] = (() => {

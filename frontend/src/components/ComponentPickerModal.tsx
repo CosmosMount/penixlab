@@ -33,16 +33,7 @@ interface CardHoverApi {
 }
 import type { BoardKind } from '../types/board';
 import { BOARD_KIND_LABELS } from '../types/board';
-import { isProBoardKind } from '../lib/proBoardGate';
-import { getProBoard, subscribeProBoards, getProBoardsVersion } from '../lib/proBoardRegistry';
-import {
-  ONLINE_ONLY_BOARD_ADS,
-  ONLINE_ONLY_COMPONENT_ADS,
-  ONLINE_EDITOR_URL,
-  isOnlineOnlyAdSuppressed,
-  type OnlineOnlyBoardAd,
-  type OnlineOnlyComponentAd,
-} from '../lib/onlineOnlyBoards';
+import { getProBoard } from '../lib/proBoardRegistry';
 import raspberryPi3Svg from '../assets/Raspberry_Pi_3_illustration.svg';
 import raspberryPi4Png from '../assets/raspberry-pi-4-board.png';
 import raspberryPi5Png from '../assets/raspberry-pi-5-board.png';
@@ -67,7 +58,7 @@ interface ComponentPickerModalProps {
 }
 
 /**
- * wokwi-elements ships art for boards Velxio does not emulate; the metadata
+ * wokwi-elements ships art for boards PenixLab does not emulate; the metadata
  * auto-scan sweeps them into the registry as plain components. Listing one in
  * the picker promises a board that will never boot, so they are hidden here —
  * NOT deleted from components-metadata.json, because saved projects that
@@ -77,7 +68,7 @@ const UNSIMULATED_BOARD_SHELLS = new Set(['nano-rp2040-connect']);
 
 /**
  * Maker-first category order for the picker grid and the category filter.
- * Velxio's audience is hobbyist-heavy: everyday digital parts (sensors,
+ * PenixLab's audience is hobbyist-heavy: everyday digital parts (sensors,
  * LEDs/outputs, displays, buttons) lead, while diodes/resistors/capacitors
  * ('passive'), transistors/op-amps/instruments ('analog') and logic gates
  * sink to the end of the list.
@@ -115,16 +106,6 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
     'all',
   );
   const [registry] = useState(() => ComponentRegistry.getInstance());
-  // Late-overlay registrations must re-render an already-mounted picker:
-  // the @pro import is dynamic, so boards/components can register AFTER the
-  // first render. Without these subscriptions the memos below freeze on the
-  // pre-registration state (boards missing, ONLINE ads instead of the real
-  // components - and which one you got depended on a reload race).
-  const proBoardsVersion = useSyncExternalStore(
-    subscribeProBoards,
-    getProBoardsVersion,
-    getProBoardsVersion,
-  );
   const registryVersion = useSyncExternalStore(
     registry.subscribe,
     registry.getVersion,
@@ -220,32 +201,12 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
     );
 
     return components;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, selectedCategory, registry, isLoading, registryVersion, proBoardsVersion]);
+  }, [searchQuery, selectedCategory, registry, isLoading, registryVersion]);
 
 
-  // Boards list comes from the shared profile registry. Overlay boards are
-  // included as soon as registerProBoards() publishes their profile.
   const allBoards = useMemo(() => {
     return listBoardProfiles().map((profile) => profile.id as BoardKind);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proBoardsVersion]);
-
-  // Online-only component ads: shown where the real component would sit, and
-  // hidden automatically in any build whose registry has the real component
-  // (the hosted overlay merges it in) — same contract as VISIBLE_BOARD_ADS.
-  const visibleComponentAds = useMemo(() => {
-    if (isLoading) return [];
-    const q = searchQuery.toLowerCase();
-    return ONLINE_ONLY_COMPONENT_ADS.filter(
-      (ad) =>
-        !registry.getById(ad.id) &&
-        !isOnlineOnlyAdSuppressed(ad.id) &&
-        (selectedCategory === 'all' || ad.category === selectedCategory) &&
-        (!q || ad.label.toLowerCase().includes(q)),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registry, isLoading, searchQuery, selectedCategory, registryVersion, proBoardsVersion]);
+  }, []);
 
   // Get available categories — same maker-first order as the grid.
   const categories = useMemo(() => {
@@ -358,9 +319,6 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
                 hoverApi={hoverApi}
               />
             ))}
-            {visibleBoardAds().map((ad) => (
-              <OnlineOnlyBoardCard key={ad.id} ad={ad} />
-            ))}
           </div>
         ) : (
           <>
@@ -388,12 +346,6 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
                       hoverApi={hoverApi}
                     />
                   ))}
-                  {visibleBoardAds().filter(
-                    (ad) =>
-                      !searchQuery || ad.label.toLowerCase().includes(searchQuery.toLowerCase()),
-                  ).map((ad) => (
-                    <OnlineOnlyBoardCard key={ad.id} ad={ad} />
-                  ))}
                 </div>
               )}
 
@@ -403,7 +355,7 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
                     <div className="spinner"></div>
                     <p>{t('editor.componentPicker.loading')}</p>
                   </div>
-                ) : filteredComponents.length === 0 && visibleComponentAds.length === 0 ? (
+                ) : filteredComponents.length === 0 ? (
                   <div className="no-results">
                     <p>{t('editor.componentPicker.noResults')}</p>
                     {searchQuery && (
@@ -425,24 +377,11 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
                       component={component}
                       hoverApi={hoverApi}
                       onSelect={() => {
-                        // Pro overlays can intercept clicks on pro_only
-                        // components by setting window.__velxio_pro_gate__.
-                        // Returning true means "handled — do not pass through".
-                        if (component.pro_only) {
-                          const gate = (window as unknown as {
-                            __velxio_pro_gate__?: (c: typeof component) => boolean;
-                          }).__velxio_pro_gate__;
-                          if (gate && gate(component)) return;
-                        }
                         onSelectComponent(component);
                       }}
                     />
                   ))
                 )}
-                {!isLoading &&
-                  visibleComponentAds.map((ad) => (
-                    <OnlineOnlyComponentCard key={ad.id} ad={ad} />
-                  ))}
               </div>
             </div>
 
@@ -473,7 +412,6 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
     document.body
   );
 };
-
 /**
  * Shared hover behaviour for the picker cards: on enter/focus cancel any
  * pending hide and arm a delayed "show panel"; on leave/blur cancel that arm
@@ -533,30 +471,6 @@ const PI_BOARD_ART: Record<string, string> = {
   'velxio-raspberry-pi-4': raspberryPi4Png,
   'velxio-raspberry-pi-5': raspberryPi5Png,
 };
-
-/** Gold PRO pill shown on cards for paid-gated boards (Pi Linux + STM32). */
-const ProBadge: React.FC = () => (
-  <span
-    title="Pro feature — paid plan or Velxio Desktop"
-    style={{
-      position: 'absolute',
-      top: 8,
-      right: 8,
-      zIndex: 1,
-      padding: '3px 10px',
-      borderRadius: 999,
-      fontSize: 11,
-      fontWeight: 700,
-      letterSpacing: 0.6,
-      color: '#1a1205',
-      background: 'linear-gradient(180deg,#ffd566,#f5a623)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
-    }}
-  >
-    PRO
-  </span>
-);
-
 const ComponentCard: React.FC<ComponentCardProps> = ({ component, onSelect, hoverApi }) => {
   const thumbnailRef = React.useRef<HTMLDivElement>(null);
   const hover = useCardHover(
@@ -569,7 +483,6 @@ const ComponentCard: React.FC<ComponentCardProps> = ({ component, onSelect, hove
       properties: component.properties,
       tags: component.tags,
       thumbnail: component.thumbnail,
-      pro_only: component.pro_only,
     }),
     hoverApi,
   );
@@ -639,7 +552,6 @@ const ComponentCard: React.FC<ComponentCardProps> = ({ component, onSelect, hove
 
   return (
     <button className="component-card" onClick={onSelect} style={{ position: 'relative' }} {...hover}>
-      {isProBoardKind(component.id) && <ProBadge />}
       <div className="card-thumbnail">
         {boardArt ? (
           <img
@@ -714,7 +626,6 @@ const BoardCard: React.FC<BoardCardProps> = ({ kind, onSelect, hoverApi }) => {
       pinCount: 0,
       properties: [],
       tags: [],
-      pro_only: isProBoardKind(kind),
     }),
     hoverApi,
   );
@@ -790,7 +701,6 @@ const BoardCard: React.FC<BoardCardProps> = ({ kind, onSelect, hoverApi }) => {
       style={{ position: 'relative' }}
       {...hover}
     >
-      {isProBoardKind(kind) && <ProBadge />}
       <div className="card-thumbnail">
         {reactThumbnail ? reactThumbnail : <div ref={thumbnailRef} className="component-preview" />}
       </div>
@@ -802,79 +712,3 @@ const BoardCard: React.FC<BoardCardProps> = ({ kind, onSelect, hoverApi }) => {
   );
 };
 
-// ── Online-only board ads ───────────────────────────────────────────────────
-// Boards implemented by the hosted editor (velxio.com), free to use there.
-// Hidden automatically in any build that registers the real BoardKind.
-/** Recomputed on access (not module load): overlay board registration patches
- *  BOARD_KIND_LABELS at mount, which must hide the corresponding ad. */
-const visibleBoardAds = () =>
-  ONLINE_ONLY_BOARD_ADS.filter(
-    (ad) => !(ad.id in BOARD_KIND_LABELS) && !isOnlineOnlyAdSuppressed(ad.id),
-  );
-
-/** Teal "ONLINE" pill: the board runs (free) in the hosted editor. */
-const OnlineBadge: React.FC = () => (
-  <span
-    title="Free in the online editor — velxio.com"
-    style={{
-      position: 'absolute',
-      top: 8,
-      right: 8,
-      zIndex: 1,
-      padding: '3px 10px',
-      borderRadius: 999,
-      fontSize: 11,
-      fontWeight: 700,
-      letterSpacing: 0.6,
-      color: '#04211c',
-      background: 'linear-gradient(180deg,#5eead4,#14b8a6)',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
-    }}
-  >
-    ONLINE
-  </span>
-);
-
-/** Advertisement card for a component only available in the hosted editor. */
-const OnlineOnlyComponentCard: React.FC<{ ad: OnlineOnlyComponentAd }> = ({ ad }) => (
-  <button
-    className="component-card"
-    style={{ position: 'relative' }}
-    title={`${ad.label} — available in the online editor at velxio.com`}
-    onClick={() => window.open(ONLINE_EDITOR_URL, '_blank', 'noopener')}
-  >
-    <OnlineBadge />
-    <div className="card-thumbnail">
-      <div
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        dangerouslySetInnerHTML={{ __html: ad.thumbnailSvg }}
-      />
-    </div>
-    <div className="card-content">
-      <div className="card-name">{ad.label}</div>
-      <div className="card-description">{ad.description}</div>
-    </div>
-  </button>
-);
-
-/** Advertisement card for a board only available in the hosted editor. */
-const OnlineOnlyBoardCard: React.FC<{ ad: OnlineOnlyBoardAd }> = ({ ad }) => (
-  <button
-    className="component-card"
-    style={{ position: 'relative' }}
-    title={`${ad.label} — free to use in the online editor at velxio.com`}
-    onClick={() => window.open(ONLINE_EDITOR_URL, '_blank', 'noopener')}
-  >
-    <OnlineBadge />
-    <div className="card-thumbnail">
-      <div
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        dangerouslySetInnerHTML={{ __html: ad.thumbnailSvg }}
-      />
-    </div>
-    <div className="card-content">
-      <div className="card-name">{ad.label}</div>
-      <div className="card-description">{ad.description}</div>
-    </div>
-  </button>
-);

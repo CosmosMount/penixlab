@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Above every floating panel, including the pro AI chat (8000/8001). */
+  /* Keep the project dialog above editor panels. */
   z-index: 9000;
   animation: newProjectFadeIn 0.15s ease;
 }
@@ -137,7 +137,7 @@
 .new-project-card-name {
   font-weight: 600;
   font-size: 12px;
-  /* Keep clear of the PRO pill in the corner. */
+  /* Keep the project name readable in the card. */
   padding-right: 40px;
 }
 
@@ -145,22 +145,6 @@
   font-size: 10.5px;
   color: #8f949c;
   line-height: 1.35;
-}
-
-/* Gold PRO pill — same look as the component picker's badge. */
-.new-project-pro {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 1;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  color: #1a1205;
-  background: linear-gradient(180deg, #ffd566, #f5a623);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
 .new-project-foot {

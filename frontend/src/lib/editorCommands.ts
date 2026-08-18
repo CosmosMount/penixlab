@@ -10,8 +10,8 @@
  *
  * So the owners register their handler under a stable id on mount (and
  * unregister on unmount), and the menu invokes by id — the same
- * registration-seam pattern the codebase already uses for pro examples,
- * guest setups and board builtins. A menu item whose command is not
+ * registration pattern the codebase also uses for optional board definitions
+ * and guest setups. A menu item whose command is not
  * currently registered renders disabled, which is also the truth: with no
  * canvas mounted there is nothing to reset.
  */
@@ -22,23 +22,8 @@ export type EditorCommandId =
   | 'project.open'
   | 'project.import'
   | 'project.export'
-  | 'project.exportBom'
-  | 'project.exportScreenshot'
   | 'file.new'
-  // Account-scoped, registered ONLY by the pro overlay and only in the
-  // matching session state (myProjects when signed in, login when not).
-  // OSS has no auth at all, so both stay unregistered here and the menu
-  // hides them outright — see `optional` in EditorMenuBar.
-  | 'account.myProjects'
-  | 'account.login'
-  // Re-opens the last delivered "What's new" post. Registered by
-  // NewsAnnouncer once a post has actually arrived, so the Help row is
-  // absent while there is nothing to re-read.
-  | 'help.whatsNew'
-  | 'project.share'
-  | 'project.githubSync'
   | 'firmware.upload'
-  | 'sim.record'
   | 'sim.compile'
   | 'sim.run'
   | 'sim.stop'

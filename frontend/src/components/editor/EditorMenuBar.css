@@ -8,7 +8,6 @@
   gap: 2px;
   margin-left: 2px;
 }
-
 .emb-root {
   position: relative;
 }
@@ -85,7 +84,7 @@
 }
 
 /* Small uppercase section header inside a menu (the Account menu groups
-   the pro items and the Language list under one trigger). */
+   the Language list under one trigger). */
 .emb-section-label {
   padding: 6px 12px 2px;
   font-size: 10px;
@@ -96,17 +95,3 @@
   user-select: none;
 }
 
-/* Same PRO pill the old toolbar overflow used (tb-overflow-pro) — users
-   should know an item is premium BEFORE clicking, not via a surprise
-   upgrade prompt. */
-.emb-pro {
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: linear-gradient(135deg, #ffd54f 0%, #ffb300 100%);
-  color: #1a1a1a;
-  flex-shrink: 0;
-  margin-left: 8px;
-}

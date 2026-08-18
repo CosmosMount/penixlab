@@ -1,5 +1,5 @@
 /**
- * CustomChipDialog — modal for editing/compiling a Velxio custom chip.
+ * CustomChipDialog — modal for editing and compiling a custom chip.
  *
  * Two tabs:
  *   - "Examples": gallery of pre-built chips. Click → loads the source.
@@ -283,18 +283,6 @@ export const CustomChipDialog = ({ initial, onClose, onSave }: CustomChipDialogP
               {compiling ? t('editor.customChip.compiling') : t('editor.customChip.compile')}
             </button>
           )}
-          {/* Extension point for the velxio-prod overlay (e.g. a "Create with
-              AI" button). Empty in OSS. The overlay reads `velxioCloseDialog`
-              off this element to dismiss the dialog after it acts. */}
-          <div
-            data-velxio-slot="custom-chip-actions"
-            style={{ display: 'contents' }}
-            ref={(el) => {
-              if (el) {
-                (el as unknown as { velxioCloseDialog?: () => void }).velxioCloseDialog = onClose;
-              }
-            }}
-          />
           <div style={{ flex: 1 }} />
           <button style={cancelBtn} onClick={onClose}>{t('editor.customChip.cancel')}</button>
           <button style={canSave ? saveBtn : saveBtnDisabled} disabled={!canSave} onClick={doSave}>
@@ -306,7 +294,7 @@ export const CustomChipDialog = ({ initial, onClose, onSave }: CustomChipDialogP
   );
 };
 
-// ── Inline styles (matches the visual language of other Velxio modals) ──
+// ── Inline styles ──
 
 const overlayStyle: React.CSSProperties = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',

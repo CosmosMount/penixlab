@@ -53,7 +53,7 @@ export const SEO_ROUTES: SeoRoute[] = [
     priority: 0.8,
     changefreq: 'weekly',
     seoMeta: {
-      title: 'Circuit & Arduino Simulator Examples — 100+ Sketches & Analog Projects | Velxio',
+      title: 'Circuit & Arduino Simulator Examples — 100+ Sketches & Analog Projects | PenixLab',
       description:
         'Browse 100+ interactive examples — Arduino, ESP32, RP2040, ATtiny85 sketches plus 40+ analog SPICE circuits (op-amp amplifiers, RC filters, transistor switches, full-wave rectifiers). Runs in your browser — free, no install.',
       url: `${DOMAIN}/examples`,

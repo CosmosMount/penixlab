@@ -27,7 +27,6 @@ import type { RP2040I2CDevice } from '../simulation/RP2040Simulator';
 import type { Wire, WireInProgress, WireEndpoint } from '../types/wire';
 import type { BoardKind, BoardInstance, LanguageMode, WifiStatus } from '../types/board';
 import { BOARD_SUPPORTS_ESPIDF, BOARD_SUPPORTS_MICROPYTHON, isPiBoardKind, isStm32BoardKind } from '../types/board';
-import { boardGateDecision, proBoardFeatureName, triggerProUpgradePrompt } from '../lib/proBoardGate';
 import { getSerialTxInterceptor } from '../lib/proHardwareSerial';
 import { calculatePinPosition } from '../utils/pinPositionCalculator';
 import { useOscilloscopeStore } from './useOscilloscopeStore';
@@ -63,7 +62,7 @@ import {
   updateWires as icUpdateWires,
   setInterconnectRuntime,
 } from '../simulation/Interconnect';
-import { SENSOR_CONTROLS, getSensorControl } from '../simulation/sensorControlConfig';
+import { getSensorControl } from '../simulation/sensorControlConfig';
 import { dispatchSensorUpdate } from '../simulation/SensorUpdateRegistry';
 
 // ── Sensor pre-registration ──────────────────────────────────────────────────
@@ -2237,11 +2236,6 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       // Pro gate (run backstop): catches STM32/Pi boards that entered the
       // canvas via an example or a loaded project (which bypass the picker's
       // add gate). Non-paid web users get the upgrade prompt instead of a run.
-      if (boardGateDecision(board.boardKind) === 'block') {
-        triggerProUpgradePrompt(proBoardFeatureName(board.boardKind));
-        return;
-      }
-
       if (isPiBoardKind(board.boardKind)) {
         // Engine routing: most projects are a Python script driving GPIO and
         // a screen, and those run in the browser in seconds instead of

@@ -92,15 +92,26 @@ npm run build
 
 ## 板卡扩展
 
-前端板卡通过 `frontend/src/boards/` 中的 `BoardProfile` 注册。新增板卡应至少明确：
+前端板卡通过 `frontend/src/boards/` 中的 `BoardProfile` 注册。新增板卡建议按下面的边界实现：
 
-1. 显示名称和编译目标；
-2. 引脚别名与数字映射；
-3. 电源、地、ADC 和协议角色；
-4. 运行时后端、固件产物和能力等级；
-5. 画布 renderer 或动态 overlay。
+1. 在独立的 Profile 文件中声明显示名称、编译目标和能力集合；
+2. 明确引脚别名、数字映射、电源、地、ADC 和 UART/I²C/SPI 角色；
+3. 为仿真运行时提供独立 adapter，不要把板卡判断散落到画布和工具栏；
+4. 为固件产物定义格式、启动/停止/复位语义和硬件烧录能力；
+5. 增加对应的 renderer、缩略图、示例工程和 Profile/编译测试。
 
 后端 QEMU 板卡运行时 Profile 位于 `backend/app/services/board_runtime_profiles.py`。未知板卡不会静默回退到其他板卡。
+
+### C++ 编辑与编译
+
+可以直接在编辑器中编写 C++。Monaco 编辑器会把 `.ino`、`.cpp`、`.cc`、`.c`、`.h` 和 `.hpp` 文件按 C/C++ 语法高亮；文件放在对应板卡的文件组中，点击工具栏的“Compile”即可将整组源文件提交给后端。
+
+- Arduino 模式由 `arduino-cli` 编译，至少需要一个 `.ino` 入口文件，头文件和 `.cpp` 文件会随工程一起提交；
+- ESP32 的 Arduino/ESP-IDF 模式由后端对应工具链编译，ESP-IDF 工程可使用 `app_main()`、组件头文件和 C/C++ 源文件；
+- 自定义芯片在“Custom Chip”编辑器中编写 C 源码，由后端编译成 WebAssembly 后加载到仿真运行时；
+- 浏览器只负责编辑和提交源代码，不包含完整的本地 C++ 工具链。若本机没有 `arduino-cli`、ESP-IDF、WASI SDK 或相关 QEMU 资源，编译按钮会在编译控制台报告缺失能力。
+
+推荐的板卡扩展顺序是：先新增 `BoardProfile` 和引脚/能力测试，再接入 renderer 与示例，最后在后端增加对应编译器或运行时 adapter。这样 UI、固件编译和仿真执行可以分别演进，也不会因为新增板卡影响已有板卡。
 
 ## 文档
 

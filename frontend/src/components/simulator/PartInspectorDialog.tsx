@@ -453,7 +453,6 @@ export const PartInspectorDialog: React.FC<PartInspectorDialogProps> = ({
     properties: componentMetadata.properties,
     tags: componentMetadata.tags ?? [],
     thumbnail: componentMetadata.thumbnail,
-    pro_only: componentMetadata.pro_only,
   };
 
   const svgThumb =
@@ -495,7 +494,6 @@ export const PartInspectorDialog: React.FC<PartInspectorDialogProps> = ({
           <span className="pid-name">{componentMetadata.name}</span>
           <span className="pid-badges">
             <span className="pid-cat">{panelData.category}</span>
-            {componentMetadata.pro_only && <span className="pid-pro">PRO</span>}
             {componentMetadata.pinCount > 0 && (
               <span className="pid-pins-badge">{componentMetadata.pinCount} pins</span>
             )}

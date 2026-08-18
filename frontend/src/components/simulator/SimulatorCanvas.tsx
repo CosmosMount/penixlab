@@ -73,11 +73,6 @@ import type { ComponentMetadata } from '../../types/component-metadata';
 import type { BoardKind, BoardInstance } from '../../types/board';
 import { boardDisplayName } from '../../types/board';
 import { getBoardFqbn } from '../../boards';
-import {
-  boardGateDecision,
-  proBoardFeatureName,
-  triggerProUpgradePrompt,
-} from '../../lib/proBoardGate';
 import { FlashModal } from './FlashModal';
 import { isTauri as isTauriRuntimeFn } from '../../desktop/tauriBridge';
 import { webFlashAvailable, webFlashMpyAvailable } from '../../lib/proWebFlash';
@@ -2687,10 +2682,6 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
                   </span>
                 )}
 
-                {/* Overlay slot for board status next to the selector (e.g.
-                    which engine a run will use). Empty in the OSS build. */}
-                <span data-velxio-slot="board-status" />
-
                 {/* Undo / Redo moved to the Edit menu in the header
                     (Ctrl+Z / Ctrl+Y still work) — two fewer buttons in a
                     row that measurably overlapped at laptop widths. */}
@@ -2796,17 +2787,6 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
 
                     const openGateway = () => {
                       if (!hasIp) return;
-                      // A private overlay (velxio.dev) can install a synchronous
-                      // gate to keep the IoT gateway behind a paid plan. When it
-                      // returns true it has already handled the click (e.g. shown
-                      // an in-place upgrade modal), so we don't open the tab.
-                      // OSS builds have no hook → always open.
-                      const gate = (
-                        window as unknown as {
-                          __velxio_iot_gateway_open_gate__?: () => boolean;
-                        }
-                      ).__velxio_iot_gateway_open_gate__;
-                      if (gate && gate()) return;
                       // Boards whose network stack lives in THIS tab (Pico W,
                       // and any ESP32 on the in-browser JS engine — wifiStatus
                       // carries inBrowser) open in the in-app iframe: a new tab
@@ -2828,9 +2808,9 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
                         onClick={openGateway}
                         title={
                           hasIp
-                            ? `WiFi: ${activeBoard.wifiStatus.ssid ?? 'Velxio-GUEST'} — IP: ${activeBoard.wifiStatus.ip}\nClick to open IoT Gateway ↗`
+                            ? `WiFi: ${activeBoard.wifiStatus.ssid ?? 'PenixLab'} — IP: ${activeBoard.wifiStatus.ip}\nClick to open IoT Gateway ↗`
                             : status === 'connected'
-                              ? `WiFi: ${activeBoard.wifiStatus.ssid ?? 'Velxio-GUEST'} — Connecting...`
+                              ? `WiFi: ${activeBoard.wifiStatus.ssid ?? 'PenixLab'} — Connecting...`
                               : status === 'initializing'
                                 ? 'WiFi: Initializing...'
                                 : 'WiFi: Disconnected'
@@ -3451,15 +3431,10 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
               },
             });
           }
-          // Flashing needs USB serial: the desktop shell always has it;
-          // on the web the pro overlay may install a Web Serial flasher
-          // for this board kind (no-op in pure OSS builds).
+          // Flashing needs USB serial through the desktop bridge or Web Serial.
           if (isTauriRuntime || webFlashAvailable(board.boardKind)) {
             // MicroPython boards don't compile to a flash image — the store
-            // keeps the 'micropython-loaded' sentinel. They flash only when
-            // the overlay implements the MicroPython path (firmware install
-            // + raw-REPL file upload); no compile step is required there,
-            // the workspace files are always available.
+            // keeps the 'micropython-loaded' sentinel.
             const isMpy = board.languageMode === 'micropython';
             const mpyWebOk =
               isMpy && !isTauriRuntime && webFlashMpyAvailable(board.boardKind);
@@ -3574,13 +3549,6 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
         onClose={() => setShowComponentPicker(false)}
         onSelectComponent={handleSelectComponent}
         onSelectBoard={(kind: BoardKind) => {
-          // Pro gate: STM32 + Raspberry Pi emulation is paid-only on the web.
-          // The overlay's gate returns 'block' for non-paid web users; show the
-          // upgrade prompt and skip the add. OSS / desktop / paid -> 'allow'.
-          if (boardGateDecision(kind) === 'block') {
-            triggerProUpgradePrompt(proBoardFeatureName(kind));
-            return;
-          }
           trackSelectBoard(kind);
           const sameKind = boards.filter((b) => b.boardKind === kind);
           const newBoardId = sameKind.length === 0 ? kind : `${kind}-${sameKind.length + 1}`;
@@ -3687,10 +3655,7 @@ export const SimulatorCanvas = ({ headerSlot }: SimulatorCanvasProps = {}) => {
           );
         })()}
 
-      {/* Hardware flash modal — opens from board context menu when
-          the user has compiled the sketch + clicks "Flash to real
-          board". Present in Tauri, and on the web when the pro
-          overlay installed a Web Serial flasher for the board kind. */}
+      {/* Hardware flash modal — opens from the board context menu. */}
       {flashModalFor &&
         (() => {
           const b = boards.find((x) => x.id === flashModalFor);
